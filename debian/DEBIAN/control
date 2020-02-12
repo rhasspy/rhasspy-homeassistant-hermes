@@ -1,0 +1,7 @@
+Package: rhasspy-homeassistant-hermes
+Version: ${version}
+Section: utils
+Priority: optional
+Architecture: ${architecture}
+Maintainer: Michael Hansen
+Description: Hermes MQTT service for Rhasspy intent handling with Home Assistant
