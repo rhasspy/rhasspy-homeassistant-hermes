@@ -10,3 +10,4 @@ dist/
 pyinstaller/
 download/
 build/
+etc/qemu-*

@@ -1,7 +1,19 @@
-ARG BUILD_ARCH=amd64
-FROM ${BUILD_ARCH}/debian:buster-slim
+ARG BUILD_ARCH
+FROM ${BUILD_ARCH}/python:3.7-alpine
+ARG BUILD_ARCH
+ARG FRIENDLY_ARCH
 
-COPY pyinstaller/dist/* /usr/lib/rhasspyhomeassistant_hermes/
-COPY debian/bin/* /usr/bin/
+COPY requirements.txt /
 
-ENTRYPOINT ["/usr/bin/rhasspy-homeassistant-hermes"]
+RUN grep '^rhasspy-' /requirements.txt | \
+    sed -e 's|=.\+|/archive/master.tar.gz|' | \
+    sed 's|^|https://github.com/rhasspy/|' \
+    > /requirements_rhasspy.txt
+
+RUN pip install --no-cache-dir -r /requirements_rhasspy.txt
+RUN pip install --no-cache-dir -r /requirements.txt
+
+COPY rhasspyhomeassistant_hermes/ /rhasspyhomeassistant_hermes/
+WORKDIR /
+
+ENTRYPOINT ["python3", "-m", "rhasspyhomeassistant_hermes"]

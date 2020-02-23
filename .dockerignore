@@ -1,3 +1,5 @@
 *
 !pyinstaller/dist
 !debian/bin
+!requirements.txt
+!rhasspyhomeassistant_hermes/*.py
