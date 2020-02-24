@@ -3,6 +3,10 @@ FROM ${BUILD_ARCH}/python:3.7-alpine
 ARG BUILD_ARCH
 ARG FRIENDLY_ARCH
 
+# Multi-arch
+COPY etc/qemu-arm-static /usr/bin/
+COPY etc/qemu-aarch64-static /usr/bin/
+
 COPY requirements.txt /
 
 RUN grep '^rhasspy-' /requirements.txt | \
