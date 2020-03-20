@@ -1,20 +1,22 @@
 """Hermes MQTT server for Rhasspy fuzzywuzzy"""
-import json
+import asyncio
 import logging
 import os
+import ssl
 import typing
 from enum import Enum
 from urllib.parse import urljoin
 from uuid import uuid4
 
+import aiohttp
 import attr
-import requests
 from rhasspyhermes.base import Message
+from rhasspyhermes.client import HermesClient
 from rhasspyhermes.handle import HandleToggleOff, HandleToggleOn
 from rhasspyhermes.nlu import NluIntent
 from rhasspyhermes.tts import TtsSay
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("rhasspyhomeassistant_hermes")
 
 # -----------------------------------------------------------------------------
 
@@ -29,7 +31,7 @@ class HandleType(str, Enum):
 # -----------------------------------------------------------------------------
 
 
-class HomeAssistantHermesMqtt:
+class HomeAssistantHermesMqtt(HermesClient):
     """Hermes MQTT server for Rhasspy intent handling with Home Assistant."""
 
     def __init__(
@@ -39,44 +41,60 @@ class HomeAssistantHermesMqtt:
         access_token: typing.Optional[str] = None,
         api_password: typing.Optional[str] = None,
         event_type_format: str = "rhasspy_{0}",
-        pem_file: typing.Optional[str] = None,
+        certfile: typing.Optional[str] = None,
+        keyfile: typing.Optional[str] = None,
         handle_type: HandleType = HandleType.EVENT,
         siteIds: typing.Optional[typing.List[str]] = None,
+        loop=None,
     ):
-        self.client = client
+        super().__init__(
+            "rhasspyhomeassistant_hermes", client, siteIds=siteIds, loop=loop
+        )
+
+        self.subscribe(NluIntent, HandleToggleOn, HandleToggleOff)
+
         self.url = url
 
         self.access_token = access_token
         self.api_password = api_password
         self.event_type_format = event_type_format
-        self.pem_file = pem_file
         self.handle_type = handle_type
 
         self.handle_enabled = True
 
-        self.siteIds = siteIds or []
+        # SSL
+        self.ssl_context = ssl.SSLContext()
+        if certfile:
+            _LOGGER.debug("Using SSL with certfile=%s, keyfile=%s", certfile, keyfile)
+            self.ssl_context.load_cert_chain(certfile, keyfile)
+
+        # Async HTTP
+        self.http_session = aiohttp.ClientSession()
+
+        # Event loop
+        self.loop = loop or asyncio.get_event_loop()
 
     # -------------------------------------------------------------------------
 
-    def handle_intent(self, nlu_intent: NluIntent):
+    async def handle_intent(
+        self, nlu_intent: NluIntent
+    ) -> typing.AsyncIterable[TtsSay]:
         """Handle intent with Home Assistant."""
         try:
             if self.handle_type == HandleType.EVENT:
-                self.handle_home_assistant_event(nlu_intent)
+                await self.handle_home_assistant_event(nlu_intent)
             elif self.handle_type == HandleType.INTENT:
-                response_dict = self.handle_home_assistant_intent(nlu_intent)
+                response_dict = await self.handle_home_assistant_intent(nlu_intent)
 
                 # Check for speech response
                 tts_text = response_dict.get("speech", {}).get("text", "")
                 if tts_text:
                     # Forward to TTS system
-                    self.publish(
-                        TtsSay(
-                            text=tts_text,
-                            id=str(uuid4()),
-                            siteId=nlu_intent.siteId,
-                            sessionId=nlu_intent.sessionId,
-                        )
+                    yield TtsSay(
+                        text=tts_text,
+                        id=str(uuid4()),
+                        siteId=nlu_intent.siteId,
+                        sessionId=nlu_intent.sessionId,
                     )
             else:
                 raise ValueError(f"Unsupported handle_type (got {self.handle_type})")
@@ -85,7 +103,7 @@ class HomeAssistantHermesMqtt:
 
     # -------------------------------------------------------------------------
 
-    def handle_home_assistant_event(self, nlu_intent: NluIntent):
+    async def handle_home_assistant_event(self, nlu_intent: NluIntent):
         """POSTs an event to Home Assistant's /api/events endpoint."""
         # Create new Home Assistant event
         event_type = self.event_type_format.format(nlu_intent.intent.intentName)
@@ -96,20 +114,21 @@ class HomeAssistantHermesMqtt:
         # Add meta slots
         slots["_text"] = nlu_intent.input
         slots["_raw_text"] = nlu_intent.raw_input
+        slots["_intent"] = attr.asdict(nlu_intent)
 
         # Send event
         post_url = urljoin(self.url, "api/events/" + event_type)
-        kwargs = self.get_hass_headers()
-
-        if self.pem_file:
-            _LOGGER.debug("Using PEM: %s", self.pem_file)
-            kwargs["verify"] = self.pem_file
+        headers = self.get_hass_headers()
 
         _LOGGER.debug(post_url)
-        response = requests.post(post_url, json=slots, **kwargs)
-        response.raise_for_status()
 
-    def handle_home_assistant_intent(
+        # No response expected
+        async with self.http_session.post(
+            post_url, json=slots, headers=headers, ssl=self.ssl_context
+        ) as response:
+            response.raise_for_status()
+
+    async def handle_home_assistant_intent(
         self, nlu_intent: NluIntent
     ) -> typing.Dict[str, typing.Any]:
         """POSTs a JSON intent to Home Assistant's /api/intent/handle endpoint."""
@@ -120,22 +139,22 @@ class HomeAssistantHermesMqtt:
         # Add meta slots
         slots["_text"] = nlu_intent.input
         slots["_raw_text"] = nlu_intent.raw_input
+        slots["_intent"] = attr.asdict(nlu_intent)
 
         hass_intent = {"name": nlu_intent.intent.intentName, "data": slots}
 
         # POST intent JSON
         post_url = urljoin(self.url, "api/intent/handle")
-        kwargs = self.get_hass_headers()
-
-        if self.pem_file:
-            _LOGGER.debug("Using PEM: %s", self.pem_file)
-            kwargs["verify"] = self.pem_file
+        headers = self.get_hass_headers()
 
         _LOGGER.debug(post_url)
-        response = requests.post(post_url, json=hass_intent, **kwargs)
-        response.raise_for_status()
 
-        return response.json()
+        # JSON response expected with optional speech
+        async with self.http_session.post(
+            post_url, json=hass_intent, headers=headers, ssl=self.ssl_context
+        ) as response:
+            response.raise_for_status()
+            return await response.json()
 
     def get_hass_headers(self) -> typing.Dict[str, str]:
         """Gets HTTP authorization headers for Home Assistant POST."""
@@ -154,67 +173,21 @@ class HomeAssistantHermesMqtt:
 
     # -------------------------------------------------------------------------
 
-    def on_connect(self, client, userdata, flags, rc):
-        """Connected to MQTT broker."""
-        try:
-            topics = [
-                NluIntent.topic(intentName="#"),
-                HandleToggleOn.topic(),
-                HandleToggleOff.topic(),
-            ]
-
-            for topic in topics:
-                self.client.subscribe(topic)
-                _LOGGER.debug("Subscribed to %s", topic)
-        except Exception:
-            _LOGGER.exception("on_connect")
-
-    def on_message(self, client, userdata, msg):
+    async def on_message(
+        self,
+        message: Message,
+        siteId: typing.Optional[str] = None,
+        sessionId: typing.Optional[str] = None,
+        topic: typing.Optional[str] = None,
+    ):
         """Received message from MQTT broker."""
-        try:
-            _LOGGER.debug("Received %s byte(s) on %s", len(msg.payload), msg.topic)
-            if NluIntent.is_topic(msg.topic):
-                json_payload = json.loads(msg.payload)
-
-                # Check siteId
-                if not self._check_siteId(json_payload):
-                    return
-
-                self.handle_intent(NluIntent.from_dict(json_payload))
-            elif HandleToggleOn.is_topic(msg.topic):
-                json_payload = json.loads(msg.payload)
-                if not self._check_siteId(json_payload):
-                    return
-
-                self.handle_enabled = True
-                _LOGGER.debug("Intent handling enabled")
-            elif HandleToggleOff.is_topic(msg.topic):
-                json_payload = json.loads(msg.payload)
-                if not self._check_siteId(json_payload):
-                    return
-
-                self.handle_enabled = False
-                _LOGGER.debug("Intent handling disabled")
-        except Exception:
-            _LOGGER.exception("on_message")
-            _LOGGER.error("%s %s", msg.topic, msg.payload)
-
-    def publish(self, message: Message, **topic_args):
-        """Publish a Hermes message to MQTT."""
-        try:
-            _LOGGER.debug("-> %s", message)
-            topic = message.topic(**topic_args)
-            payload = json.dumps(attr.asdict(message))
-            _LOGGER.debug("Publishing %s char(s) to %s", len(payload), topic)
-            self.client.publish(topic, payload)
-        except Exception:
-            _LOGGER.exception("on_message")
-
-    # -------------------------------------------------------------------------
-
-    def _check_siteId(self, json_payload: typing.Dict[str, typing.Any]) -> bool:
-        if self.siteIds:
-            return json_payload.get("siteId", "default") in self.siteIds
-
-        # All sites
-        return True
+        if isinstance(message, NluIntent):
+            await self.publish_all(self.handle_intent(message))
+        elif isinstance(message, HandleToggleOn):
+            self.handle_enabled = True
+            _LOGGER.debug("Intent handling enabled")
+        elif isinstance(message, HandleToggleOff):
+            self.handle_enabled = False
+            _LOGGER.debug("Intent handling disabled")
+        else:
+            _LOGGER.warning("Unexpected message: %s", message)

@@ -1,12 +1,15 @@
 """Hermes MQTT service for rhasspy homeassistant"""
 import argparse
+import asyncio
 import logging
 
 import paho.mqtt.client as mqtt
 
 from . import HomeAssistantHermesMqtt
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("rhasspyhomeassistant_hermes")
+
+# -----------------------------------------------------------------------------
 
 
 def main():
@@ -28,9 +31,8 @@ def main():
         default="rhasspy_{0}",
         help="Format string for event types",
     )
-    parser.add_argument(
-        "--pem-file", help="Path to PEM file for self-signed certificates"
-    )
+    parser.add_argument("--certfile", help="SSL certificate file")
+    parser.add_argument("--keyfile", help="SSL private key file (optional)")
     parser.add_argument(
         "--host", default="localhost", help="MQTT host (default: localhost)"
     )
@@ -60,6 +62,8 @@ def main():
     _LOGGER.debug(args)
 
     try:
+        loop = asyncio.get_event_loop()
+
         # Listen for messages
         client = mqtt.Client()
         hermes = HomeAssistantHermesMqtt(
@@ -68,28 +72,19 @@ def main():
             access_token=args.access_token,
             api_password=args.api_password,
             event_type_format=args.event_type_format,
-            pem_file=args.pem_file,
+            certfile=args.certfile,
+            keyfile=args.keyfile,
             handle_type=args.handle_type,
             siteIds=args.siteId,
+            loop=loop,
         )
-
-        def on_disconnect(client, userdata, flags, rc):
-            try:
-                # Automatically reconnect
-                _LOGGER.info("Disconnected. Trying to reconnect...")
-                client.reconnect()
-            except Exception:
-                logging.exception("on_disconnect")
-
-        # Connect
-        client.on_connect = hermes.on_connect
-        client.on_disconnect = on_disconnect
-        client.on_message = hermes.on_message
 
         _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
         client.connect(args.host, args.port)
+        client.loop_start()
 
-        client.loop_forever()
+        # Run event loop
+        hermes.loop.run_forever()
     except KeyboardInterrupt:
         pass
     finally:
