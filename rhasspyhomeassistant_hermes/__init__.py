@@ -107,7 +107,7 @@ class HomeAssistantHermesMqtt(HermesClient):
         """POSTs an event to Home Assistant's /api/events endpoint."""
         # Create new Home Assistant event
         event_type = self.event_type_format.format(nlu_intent.intent.intentName)
-        slots = {}
+        slots: typing.Dict[str, typing.Any] = {}
         for slot in nlu_intent.slots:
             slots[slot.slotName] = slot.value
 
@@ -132,7 +132,7 @@ class HomeAssistantHermesMqtt(HermesClient):
         self, nlu_intent: NluIntent
     ) -> typing.Dict[str, typing.Any]:
         """POSTs a JSON intent to Home Assistant's /api/intent/handle endpoint."""
-        slots = {}
+        slots: typing.Dict[str, typing.Any] = {}
         for slot in nlu_intent.slots:
             slots[slot.slotName] = slot.value
 
