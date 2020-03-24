@@ -11,7 +11,7 @@ from uuid import uuid4
 import aiohttp
 import attr
 from rhasspyhermes.base import Message
-from rhasspyhermes.client import HermesClient
+from rhasspyhermes.client import GeneratorType, HermesClient
 from rhasspyhermes.handle import HandleToggleOff, HandleToggleOn
 from rhasspyhermes.nlu import NluIntent
 from rhasspyhermes.tts import TtsSay
@@ -179,10 +179,11 @@ class HomeAssistantHermesMqtt(HermesClient):
         siteId: typing.Optional[str] = None,
         sessionId: typing.Optional[str] = None,
         topic: typing.Optional[str] = None,
-    ):
+    ) -> GeneratorType:
         """Received message from MQTT broker."""
         if isinstance(message, NluIntent):
-            await self.publish_all(self.handle_intent(message))
+            async for intent_result in self.handle_intent(message):
+                yield intent_result
         elif isinstance(message, HandleToggleOn):
             self.handle_enabled = True
             _LOGGER.debug("Intent handling enabled")
