@@ -1,5 +1,6 @@
 """Hermes MQTT server for Rhasspy fuzzywuzzy"""
 import asyncio
+import dataclasses
 import logging
 import os
 import ssl
@@ -9,7 +10,6 @@ from urllib.parse import urljoin
 from uuid import uuid4
 
 import aiohttp
-import attr
 from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient
 from rhasspyhermes.handle import HandleToggleOff, HandleToggleOn
@@ -114,7 +114,7 @@ class HomeAssistantHermesMqtt(HermesClient):
         # Add meta slots
         slots["_text"] = nlu_intent.input
         slots["_raw_text"] = nlu_intent.raw_input
-        slots["_intent"] = attr.asdict(nlu_intent)
+        slots["_intent"] = dataclasses.asdict(nlu_intent)
 
         # Send event
         post_url = urljoin(self.url, "api/events/" + event_type)
@@ -139,7 +139,7 @@ class HomeAssistantHermesMqtt(HermesClient):
         # Add meta slots
         slots["_text"] = nlu_intent.input
         slots["_raw_text"] = nlu_intent.raw_input
-        slots["_intent"] = attr.asdict(nlu_intent)
+        slots["_intent"] = dataclasses.asdict(nlu_intent)
 
         hass_intent = {"name": nlu_intent.intent.intentName, "data": slots}
 
