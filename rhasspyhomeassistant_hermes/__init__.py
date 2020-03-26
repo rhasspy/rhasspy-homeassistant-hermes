@@ -159,7 +159,7 @@ class HomeAssistantHermesMqtt(HermesClient):
     def get_hass_headers(self) -> typing.Dict[str, str]:
         """Gets HTTP authorization headers for Home Assistant POST."""
         if self.access_token:
-            return {"Authorization": self.access_token}
+            return {"Authorization": f"Bearer {self.access_token}"}
 
         if self.api_password:
             return {"X-HA-Access": self.api_password}
