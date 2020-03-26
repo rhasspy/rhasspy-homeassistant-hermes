@@ -105,56 +105,62 @@ class HomeAssistantHermesMqtt(HermesClient):
 
     async def handle_home_assistant_event(self, nlu_intent: NluIntent):
         """POSTs an event to Home Assistant's /api/events endpoint."""
-        # Create new Home Assistant event
-        event_type = self.event_type_format.format(nlu_intent.intent.intentName)
-        slots: typing.Dict[str, typing.Any] = {}
-        for slot in nlu_intent.slots:
-            slots[slot.slotName] = slot.value
+        try:
+            # Create new Home Assistant event
+            event_type = self.event_type_format.format(nlu_intent.intent.intentName)
+            slots: typing.Dict[str, typing.Any] = {}
+            for slot in nlu_intent.slots:
+                slots[slot.slotName] = slot.value
 
-        # Add meta slots
-        slots["_text"] = nlu_intent.input
-        slots["_raw_text"] = nlu_intent.raw_input
-        slots["_intent"] = dataclasses.asdict(nlu_intent)
+            # Add meta slots
+            slots["_text"] = nlu_intent.input
+            slots["_raw_text"] = nlu_intent.raw_input
+            slots["_intent"] = dataclasses.asdict(nlu_intent)
 
-        # Send event
-        post_url = urljoin(self.url, "api/events/" + event_type)
-        headers = self.get_hass_headers()
+            # Send event
+            post_url = urljoin(self.url, "api/events/" + event_type)
+            headers = self.get_hass_headers()
 
-        _LOGGER.debug(post_url)
+            _LOGGER.debug(post_url)
 
-        # No response expected
-        async with self.http_session.post(
-            post_url, json=slots, headers=headers, ssl=self.ssl_context
-        ) as response:
-            response.raise_for_status()
+            # No response expected
+            async with self.http_session.post(
+                post_url, json=slots, headers=headers, ssl=self.ssl_context
+            ) as response:
+                response.raise_for_status()
+        except Exception:
+            _LOGGER.exception("handle_home_assistant_event")
 
     async def handle_home_assistant_intent(
         self, nlu_intent: NluIntent
     ) -> typing.Dict[str, typing.Any]:
         """POSTs a JSON intent to Home Assistant's /api/intent/handle endpoint."""
-        slots: typing.Dict[str, typing.Any] = {}
-        for slot in nlu_intent.slots:
-            slots[slot.slotName] = slot.value
+        try:
+            slots: typing.Dict[str, typing.Any] = {}
+            for slot in nlu_intent.slots:
+                slots[slot.slotName] = slot.value
 
-        # Add meta slots
-        slots["_text"] = nlu_intent.input
-        slots["_raw_text"] = nlu_intent.raw_input
-        slots["_intent"] = dataclasses.asdict(nlu_intent)
+            # Add meta slots
+            slots["_text"] = nlu_intent.input
+            slots["_raw_text"] = nlu_intent.raw_input
+            slots["_intent"] = dataclasses.asdict(nlu_intent)
 
-        hass_intent = {"name": nlu_intent.intent.intentName, "data": slots}
+            hass_intent = {"name": nlu_intent.intent.intentName, "data": slots}
 
-        # POST intent JSON
-        post_url = urljoin(self.url, "api/intent/handle")
-        headers = self.get_hass_headers()
+            # POST intent JSON
+            post_url = urljoin(self.url, "api/intent/handle")
+            headers = self.get_hass_headers()
 
-        _LOGGER.debug(post_url)
+            _LOGGER.debug(post_url)
 
-        # JSON response expected with optional speech
-        async with self.http_session.post(
-            post_url, json=hass_intent, headers=headers, ssl=self.ssl_context
-        ) as response:
-            response.raise_for_status()
-            return await response.json()
+            # JSON response expected with optional speech
+            async with self.http_session.post(
+                post_url, json=hass_intent, headers=headers, ssl=self.ssl_context
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
+        except Exception:
+            _LOGGER.exception("handle_home_assistant_intent")
 
     def get_hass_headers(self) -> typing.Dict[str, str]:
         """Gets HTTP authorization headers for Home Assistant POST."""
