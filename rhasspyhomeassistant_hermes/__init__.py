@@ -85,6 +85,7 @@ class HomeAssistantHermesMqtt(HermesClient):
                 await self.handle_home_assistant_event(nlu_intent)
             elif self.handle_type == HandleType.INTENT:
                 response_dict = await self.handle_home_assistant_intent(nlu_intent)
+                assert response_dict, f"No response from {self.url}"
 
                 # Check for speech response
                 tts_text = response_dict.get("speech", {}).get("text", "")
