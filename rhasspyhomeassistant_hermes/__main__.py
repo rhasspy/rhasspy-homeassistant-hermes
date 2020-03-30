@@ -41,25 +41,25 @@ def main():
     hermes_cli.setup_logging(args)
     _LOGGER.debug(args)
 
+    # Listen for messages
+    client = mqtt.Client()
+    hermes = HomeAssistantHermesMqtt(
+        client,
+        url=args.url,
+        access_token=args.access_token,
+        api_password=args.api_password,
+        event_type_format=args.event_type_format,
+        certfile=args.certfile,
+        keyfile=args.keyfile,
+        handle_type=args.handle_type,
+        siteIds=args.siteId,
+    )
+
+    _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
+    hermes_cli.connect(client, args)
+    client.loop_start()
+
     try:
-        # Listen for messages
-        client = mqtt.Client()
-        hermes = HomeAssistantHermesMqtt(
-            client,
-            url=args.url,
-            access_token=args.access_token,
-            api_password=args.api_password,
-            event_type_format=args.event_type_format,
-            certfile=args.certfile,
-            keyfile=args.keyfile,
-            handle_type=args.handle_type,
-            siteIds=args.siteId,
-        )
-
-        _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
-        hermes_cli.connect(client, args)
-        client.loop_start()
-
         # Run event loop
         asyncio.run(hermes.handle_messages_async())
     except KeyboardInterrupt:
