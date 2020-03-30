@@ -42,8 +42,6 @@ def main():
     _LOGGER.debug(args)
 
     try:
-        loop = asyncio.get_event_loop()
-
         # Listen for messages
         client = mqtt.Client()
         hermes = HomeAssistantHermesMqtt(
@@ -56,7 +54,6 @@ def main():
             keyfile=args.keyfile,
             handle_type=args.handle_type,
             siteIds=args.siteId,
-            loop=loop,
         )
 
         _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
@@ -64,11 +61,12 @@ def main():
         client.loop_start()
 
         # Run event loop
-        hermes.loop.run_forever()
+        asyncio.run(hermes.handle_messages_async())
     except KeyboardInterrupt:
         pass
     finally:
         _LOGGER.debug("Shutting down")
+        client.loop_stop()
 
 
 # -----------------------------------------------------------------------------

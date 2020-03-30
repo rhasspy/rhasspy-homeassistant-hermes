@@ -1,5 +1,4 @@
 """Hermes MQTT server for Rhasspy fuzzywuzzy"""
-import asyncio
 import dataclasses
 import logging
 import os
@@ -45,11 +44,8 @@ class HomeAssistantHermesMqtt(HermesClient):
         keyfile: typing.Optional[str] = None,
         handle_type: HandleType = HandleType.EVENT,
         siteIds: typing.Optional[typing.List[str]] = None,
-        loop=None,
     ):
-        super().__init__(
-            "rhasspyhomeassistant_hermes", client, siteIds=siteIds, loop=loop
-        )
+        super().__init__("rhasspyhomeassistant_hermes", client, siteIds=siteIds)
 
         self.subscribe(NluIntent, HandleToggleOn, HandleToggleOff)
 
@@ -69,10 +65,15 @@ class HomeAssistantHermesMqtt(HermesClient):
             self.ssl_context.load_cert_chain(certfile, keyfile)
 
         # Async HTTP
-        self.http_session = aiohttp.ClientSession()
+        self._http_session: typing.Optional[aiohttp.ClientSession] = None
 
-        # Event loop
-        self.loop = loop or asyncio.get_event_loop()
+    @property
+    def http_session(self):
+        """Get or create async HTTP session"""
+        if self._http_session is None:
+            self._http_session = aiohttp.ClientSession()
+
+        return self._http_session
 
     # -------------------------------------------------------------------------
 
@@ -162,6 +163,9 @@ class HomeAssistantHermesMqtt(HermesClient):
                 return await response.json()
         except Exception:
             _LOGGER.exception("handle_home_assistant_intent")
+
+        # Empty response
+        return {}
 
     def get_hass_headers(self) -> typing.Dict[str, str]:
         """Gets HTTP authorization headers for Home Assistant POST."""
