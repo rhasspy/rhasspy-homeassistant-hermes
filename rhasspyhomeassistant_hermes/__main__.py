@@ -52,7 +52,7 @@ def main():
         certfile=args.certfile,
         keyfile=args.keyfile,
         handle_type=args.handle_type,
-        siteIds=args.siteId,
+        site_ids=args.site_id,
     )
 
     _LOGGER.debug("Connecting to %s:%s", args.host, args.port)

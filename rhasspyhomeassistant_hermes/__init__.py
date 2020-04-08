@@ -1,5 +1,4 @@
 """Hermes MQTT server for Rhasspy fuzzywuzzy"""
-import dataclasses
 import logging
 import os
 import ssl
@@ -43,9 +42,9 @@ class HomeAssistantHermesMqtt(HermesClient):
         certfile: typing.Optional[str] = None,
         keyfile: typing.Optional[str] = None,
         handle_type: HandleType = HandleType.EVENT,
-        siteIds: typing.Optional[typing.List[str]] = None,
+        site_ids: typing.Optional[typing.List[str]] = None,
     ):
-        super().__init__("rhasspyhomeassistant_hermes", client, siteIds=siteIds)
+        super().__init__("rhasspyhomeassistant_hermes", client, site_ids=site_ids)
 
         self.subscribe(NluIntent, HandleToggleOn, HandleToggleOff)
 
@@ -95,8 +94,8 @@ class HomeAssistantHermesMqtt(HermesClient):
                     yield TtsSay(
                         text=tts_text,
                         id=str(uuid4()),
-                        siteId=nlu_intent.siteId,
-                        sessionId=nlu_intent.sessionId,
+                        site_id=nlu_intent.site_id,
+                        session_id=nlu_intent.session_id,
                     )
             else:
                 raise ValueError(f"Unsupported handle_type (got {self.handle_type})")
@@ -109,15 +108,17 @@ class HomeAssistantHermesMqtt(HermesClient):
         """POSTs an event to Home Assistant's /api/events endpoint."""
         try:
             # Create new Home Assistant event
-            event_type = self.event_type_format.format(nlu_intent.intent.intentName)
+            event_type = self.event_type_format.format(nlu_intent.intent.intent_name)
             slots: typing.Dict[str, typing.Any] = {}
-            for slot in nlu_intent.slots:
-                slots[slot.slotName] = slot.value
+
+            if nlu_intent.slots:
+                for slot in nlu_intent.slots:
+                    slots[slot.slot_name] = slot.value
 
             # Add meta slots
             slots["_text"] = nlu_intent.input
             slots["_raw_text"] = nlu_intent.raw_input
-            slots["_intent"] = dataclasses.asdict(nlu_intent)
+            slots["_intent"] = nlu_intent.to_dict()
 
             # Send event
             post_url = urljoin(self.url, "api/events/" + event_type)
@@ -139,15 +140,17 @@ class HomeAssistantHermesMqtt(HermesClient):
         """POSTs a JSON intent to Home Assistant's /api/intent/handle endpoint."""
         try:
             slots: typing.Dict[str, typing.Any] = {}
-            for slot in nlu_intent.slots:
-                slots[slot.slotName] = slot.value
+
+            if nlu_intent.slots:
+                for slot in nlu_intent.slots:
+                    slots[slot.slot_name] = slot.value
 
             # Add meta slots
             slots["_text"] = nlu_intent.input
             slots["_raw_text"] = nlu_intent.raw_input
-            slots["_intent"] = dataclasses.asdict(nlu_intent)
+            slots["_intent"] = nlu_intent.to_dict()
 
-            hass_intent = {"name": nlu_intent.intent.intentName, "data": slots}
+            hass_intent = {"name": nlu_intent.intent.intent_name, "data": slots}
 
             # POST intent JSON
             post_url = urljoin(self.url, "api/intent/handle")
@@ -187,8 +190,8 @@ class HomeAssistantHermesMqtt(HermesClient):
     async def on_message(
         self,
         message: Message,
-        siteId: typing.Optional[str] = None,
-        sessionId: typing.Optional[str] = None,
+        site_id: typing.Optional[str] = None,
+        session_id: typing.Optional[str] = None,
         topic: typing.Optional[str] = None,
     ) -> GeneratorType:
         """Received message from MQTT broker."""
