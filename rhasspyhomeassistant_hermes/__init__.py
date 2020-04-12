@@ -113,7 +113,7 @@ class HomeAssistantHermesMqtt(HermesClient):
 
             if nlu_intent.slots:
                 for slot in nlu_intent.slots:
-                    slots[slot.slot_name] = slot.value
+                    slots[slot.slot_name] = slot.value["value"]
 
             # Add meta slots
             slots["_text"] = nlu_intent.input
@@ -143,7 +143,7 @@ class HomeAssistantHermesMqtt(HermesClient):
 
             if nlu_intent.slots:
                 for slot in nlu_intent.slots:
-                    slots[slot.slot_name] = slot.value
+                    slots[slot.slot_name] = slot.value["value"]
 
             # Add meta slots
             slots["_text"] = nlu_intent.input
