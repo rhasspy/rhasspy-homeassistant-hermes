@@ -196,8 +196,9 @@ class HomeAssistantHermesMqtt(HermesClient):
     ) -> GeneratorType:
         """Received message from MQTT broker."""
         if isinstance(message, NluIntent):
-            async for intent_result in self.handle_intent(message):
-                yield intent_result
+            if self.handle_enabled:
+                async for intent_result in self.handle_intent(message):
+                    yield intent_result
         elif isinstance(message, HandleToggleOn):
             self.handle_enabled = True
             _LOGGER.debug("Intent handling enabled")
