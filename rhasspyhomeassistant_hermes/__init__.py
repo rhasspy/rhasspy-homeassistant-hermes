@@ -88,7 +88,9 @@ class HomeAssistantHermesMqtt(HermesClient):
                 assert response_dict, f"No response from {self.url}"
 
                 # Check for speech response
-                tts_text = response_dict.get("speech", {}).get("text", "")
+                tts_text = (
+                    response_dict.get("speech", {}).get("plain", {}).get("speech", "")
+                )
                 if tts_text:
                     # Forward to TTS system
                     yield TtsSay(
