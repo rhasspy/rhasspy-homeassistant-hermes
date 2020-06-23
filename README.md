@@ -5,51 +5,33 @@
 
 Handles intents using [Home Assistant](https://www.home-assistant.io/) and [Hass.io](https://www.home-assistant.io/hassio/)
 
-## Running With Docker
+## Requirements
+
+* Python 3.7
+
+## Installation
 
 ```bash
-docker run -it rhasspy/rhasspy-homeassistant-hermes:<VERSION> <ARGS>
+$ git clone https://github.com/rhasspy/rhasspy-homeassistant-hermes
+$ cd rhasspy-homeassistant-hermes
+$ ./configure
+$ make
+$ make install
 ```
 
-## Building From Source
-
-Clone the repository and create the virtual environment:
+## Deployment
 
 ```bash
-git clone https://github.com/rhasspy/rhasspy-homeassistant-hermes.git
-cd rhasspy-homeassistant-hermes
-make venv
+$ make dist
 ```
 
-Run the `bin/rhasspy-homeassistant-hermes` script to access the command-line interface:
+See `dist/` directory for `.tar.gz` file.
+
+## Running
 
 ```bash
-bin/rhasspy-homeassistant-hermes --help
+$ bin/rhasspy-homeassistant-hermes <ARGS>
 ```
-
-## Building the Debian Package
-
-Follow the instructions to build from source, then run:
-
-```bash
-source .venv/bin/activate
-make debian
-```
-
-If successful, you'll find a `.deb` file in the `dist` directory that can be installed with `apt`.
-
-## Building the Docker Image
-
-Follow the instructions to build from source, then run:
-
-```bash
-source .venv/bin/activate
-make docker
-```
-
-This will create a Docker image tagged `rhasspy/rhasspy-homeassistant-hermes:<VERSION>` where `VERSION` comes from the file of the same name in the source root directory.
-
-NOTE: If you add things to the Docker image, make sure to whitelist them in `.dockerignore`.
 
 ## Command-Line Options
 
@@ -59,8 +41,18 @@ usage: rhasspy-homeassistant-hermes [-h] --url URL
                                     [--api-password API_PASSWORD]
                                     [--handle-type {event,intent}]
                                     [--event-type-format EVENT_TYPE_FORMAT]
-                                    [--pem-file PEM_FILE] [--host HOST]
-                                    [--port PORT] [--siteId SITEID] [--debug]
+                                    [--certfile CERTFILE] [--keyfile KEYFILE]
+                                    [--host HOST] [--port PORT]
+                                    [--username USERNAME]
+                                    [--password PASSWORD] [--tls]
+                                    [--tls-ca-certs TLS_CA_CERTS]
+                                    [--tls-certfile TLS_CERTFILE]
+                                    [--tls-keyfile TLS_KEYFILE]
+                                    [--tls-cert-reqs {CERT_REQUIRED,CERT_OPTIONAL,CERT_NONE}]
+                                    [--tls-version TLS_VERSION]
+                                    [--tls-ciphers TLS_CIPHERS]
+                                    [--site-id SITE_ID] [--debug]
+                                    [--log-format LOG_FORMAT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -73,9 +65,28 @@ optional arguments:
                         Use Home Assistant events or intent API
   --event-type-format EVENT_TYPE_FORMAT
                         Format string for event types
-  --pem-file PEM_FILE   Path to PEM file for self-signed certificates
+  --certfile CERTFILE   SSL certificate file
+  --keyfile KEYFILE     SSL private key file (optional)
   --host HOST           MQTT host (default: localhost)
   --port PORT           MQTT port (default: 1883)
-  --siteId SITEID       Hermes siteId(s) to listen for (default: all)
+  --username USERNAME   MQTT username
+  --password PASSWORD   MQTT password
+  --tls                 Enable MQTT TLS
+  --tls-ca-certs TLS_CA_CERTS
+                        MQTT TLS Certificate Authority certificate files
+  --tls-certfile TLS_CERTFILE
+                        MQTT TLS certificate file (PEM)
+  --tls-keyfile TLS_KEYFILE
+                        MQTT TLS key file (PEM)
+  --tls-cert-reqs {CERT_REQUIRED,CERT_OPTIONAL,CERT_NONE}
+                        MQTT TLS certificate requirements (default:
+                        CERT_REQUIRED)
+  --tls-version TLS_VERSION
+                        MQTT TLS version (default: highest)
+  --tls-ciphers TLS_CIPHERS
+                        MQTT TLS ciphers to use
+  --site-id SITE_ID     Hermes site id(s) to listen for (default: all)
   --debug               Print DEBUG messages to the console
+  --log-format LOG_FORMAT
+                        Python logger format
 ```
