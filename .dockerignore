@@ -1,5 +1,11 @@
 *
-!pyinstaller/dist
-!debian/bin
 !requirements.txt
 !rhasspyhomeassistant_hermes/*.py
+!Makefile
+!setup.py
+!README.md
+!LICENSE
+!VERSION
+!download/
+!scripts/
+!bin/rhasspy-homeassistant-hermes

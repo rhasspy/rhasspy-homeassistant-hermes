@@ -1,6 +1,6 @@
 SHELL := bash
 
-.PHONY: reformat check dist install
+.PHONY: reformat check dist install dist docker
 
 all:
 
@@ -24,3 +24,6 @@ sdist:
 
 test:
 	scripts/run-tests.sh
+
+docker:
+	scripts/build-docker.sh
