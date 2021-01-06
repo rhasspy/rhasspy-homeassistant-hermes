@@ -151,6 +151,7 @@ class HomeAssistantHermesMqtt(HermesClient):
             slots["_text"] = nlu_intent.input
             slots["_raw_text"] = nlu_intent.raw_input
             slots["_intent"] = nlu_intent.to_dict()
+            slots["_site_id"] = nlu_intent.site_id
 
             hass_intent = {"name": nlu_intent.intent.intent_name, "data": slots}
 
