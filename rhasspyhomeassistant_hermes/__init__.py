@@ -121,6 +121,7 @@ class HomeAssistantHermesMqtt(HermesClient):
             slots["_text"] = nlu_intent.input
             slots["_raw_text"] = nlu_intent.raw_input
             slots["_intent"] = nlu_intent.to_dict()
+            slots["_site_id"] = nlu_intent.site_id
 
             # Send event
             post_url = urljoin(self.url, "api/events/" + event_type)
