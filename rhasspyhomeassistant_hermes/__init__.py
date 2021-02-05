@@ -182,7 +182,7 @@ class HomeAssistantHermesMqtt(HermesClient):
         if self.api_password:
             return {"X-HA-Access": self.api_password}
 
-        hassio_token = os.environ.get("HASSIO_TOKEN")
+        hassio_token = os.getenv("HASSIO_TOKEN") or os.getenv("SUPERVISOR_TOKEN")
         if hassio_token:
             return {"Authorization": f"Bearer {hassio_token}"}
 
