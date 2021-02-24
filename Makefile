@@ -1,5 +1,4 @@
 SHELL := bash
-
 .PHONY: reformat check dist install dist docker deploy
 
 all:
@@ -29,5 +28,5 @@ docker:
 	scripts/build-docker.sh
 
 deploy:
-	docker login --username rhasspy --password $DOCKER_PASSWORD
+	docker login --username rhasspy --password "$$DOCKER_PASSWORD"
 	scripts/build-docker.sh
