@@ -1,4 +1,5 @@
 SHELL := bash
+
 .PHONY: reformat check dist install dist docker deploy
 
 all:
